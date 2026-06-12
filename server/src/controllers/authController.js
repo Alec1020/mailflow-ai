@@ -1,5 +1,5 @@
 const User = require('../models/User');
-// const jwt = require('jsonwebtoken');
+const jwt = require('jsonwebtoken');
 
 const {
   generateAccessToken,
@@ -89,4 +89,42 @@ exports.logout = async (req, res) => {
 exports.getMe = async (req, res) => {
   if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
   res.json(req.user);
+};
+
+// Refresh Access Token
+
+exports.refreshToken = async (req, res) => {
+  try {
+    const refreshToken = req.cookies.refreshToken;
+
+    if (!refreshToken) {
+      return res.status(401).json({
+        message: "Refresh token missing",
+      });
+    }
+
+    const decoded = jwt.verify(
+      refreshToken,
+      process.env.REFRESH_TOKEN_SECRET
+    );
+
+    const user = await User.findById(decoded.id);
+
+    if (!user) {
+      return res.status(401).json({
+        message: "User not found",
+      });
+    }
+
+    const newAccessToken =
+      generateAccessToken(user._id);
+
+    res.json({
+      accessToken: newAccessToken,
+    });
+  } catch (error) {
+    res.status(401).json({
+      message: "Invalid refresh token",
+    });
+  }
 };
