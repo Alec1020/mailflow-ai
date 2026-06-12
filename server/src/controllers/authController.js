@@ -1,10 +1,15 @@
 const User = require('../models/User');
-const jwt = require('jsonwebtoken');
+// const jwt = require('jsonwebtoken');
+
+const {
+  generateAccessToken,
+  generateRefreshToken
+} = require('../utils/generateTokens');
 
 // Generate JWT
-const generateToken = (id, secret, expiresIn) => {
-  return jwt.sign({ id }, secret, { expiresIn });
-};
+// const generateToken = (id, secret, expiresIn) => {
+//   return jwt.sign({ id }, secret, { expiresIn });
+// };
 
 // Register
 exports.register = async (req, res) => {
@@ -38,8 +43,8 @@ exports.login = async (req, res) => {
     const isMatch = await user.matchPassword(password);
     if (!isMatch) return res.status(401).json({ message: 'Invalid credentials' });
 
-    const accessToken = generateToken(user._id, process.env.JWT_SECRET, '15m');
-    const refreshToken = generateToken(user._id, process.env.REFRESH_TOKEN_SECRET, '7d');
+    const accessToken = generateAccessToken(user._id);
+    const refreshToken = generateRefreshToken(user._id);
 
     user.refreshToken = refreshToken;
     await user.save();
@@ -51,7 +56,7 @@ exports.login = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    res.json({
+    res.status(200).json({
       accessToken,
       user: {
         _id: user._id,
@@ -78,4 +83,10 @@ exports.logout = async (req, res) => {
 
   res.clearCookie('refreshToken');
   res.sendStatus(200);
+};
+
+//GET Current User
+exports.getMe = async (req, res) => {
+  if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
+  res.json(req.user);
 };
